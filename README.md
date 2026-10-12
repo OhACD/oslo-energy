@@ -15,7 +15,7 @@ The project currently provides the data pipeline for that research. It collects 
 
 ## Current Status
 
-The data pipeline supports hourly API collection, immutable raw JSON archives, DST-safe normalization, quality reports, offline replay, optional PostgreSQL storage with correction history, and incremental daily/reconciliation job modes.
+The data pipeline supports hourly API collection, immutable raw JSON archives, DST-safe normalization, quality reports, offline replay, optional PostgreSQL storage with correction history, and incremental daily/reconciliation job modes. A separate analytical cleaning stage is being designed; it is not implemented and does not run during ingestion.
 
 ```text
 Statnett hourly API -> raw archive -> normalized CSVs + quality report
@@ -71,6 +71,7 @@ Daily mode catches up and refreshes three completed Oslo dates. Reconciliation r
 | --- | --- |
 | [Research Plan](docs/research-plan.md) | Understand the questions, planned experiments, and publication goals |
 | [Pipeline](docs/pipeline.md) | Collect data, inspect outputs, replay snapshots, and understand normalization |
+| [Cleaning Pipeline Design](docs/cleaning.md) | Review the proposed post-normalization analytical cleaning stage |
 | [PostgreSQL Storage](docs/persistence.md) | Configure optional storage and understand correction history |
 | [Statnett Investigation](docs/statnett-source-investigation.md) | Review the source discrepancies, evidence, and open questions |
 

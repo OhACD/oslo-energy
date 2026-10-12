@@ -1,6 +1,6 @@
 # Data Pipeline
 
-Use this guide to collect Statnett data, inspect normalized outputs, or replay a saved snapshot. The pipeline prepares observations for analysis; it does not yet clean data for training, engineer features, or run forecasting models.
+Use this guide to collect Statnett data, inspect normalized outputs, or replay a saved snapshot. The pipeline prepares observations for analysis; it does not yet clean data for training, engineer features, or run forecasting models. Analytical cleaning is a proposed standalone stage after normalization; it is not invoked by ingestion. See the [cleaning pipeline design](cleaning.md).
 
 For the project goals, start with the [README](../README.md). For measurement uncertainties, see the [Statnett investigation](statnett-source-investigation.md).
 
@@ -151,10 +151,10 @@ Argument errors and failed runs return nonzero exit codes. A complete local day 
 
 ```text
 Hourly API -> raw JSON archive -> normalization -> CSVs + quality report
-                                                     |
-                                              explicit --persist
-                                                     |
-                                     PostgreSQL observations + history
+                                                |                      |
+                                      explicit --persist       proposed cleaning CLI
+                                                |                      |
+                              PostgreSQL observations + history   separate cleaned dataset
 ```
 
 | Component | Responsibility |

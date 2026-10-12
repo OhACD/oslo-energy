@@ -68,7 +68,7 @@ Raw JSON snapshots remain on disk for replay. Only structurally valid hours endi
 
 `period_start_utc` is the unique key for the current national hourly series, so repeated autumn local hours remain distinct. Measurements use `DOUBLE PRECISION`, matching the normalized floating-point path rather than exact decimal storage. Constraints require hour-aligned periods, one-hour duration, and finite nonnegative values when present.
 
-Source measurements are retained as observed. Future cleaning, aggregation, and feature datasets must be separate transformations rather than edits to those measurements.
+Source measurements are retained as observed. Future cleaning, aggregation, and feature datasets must be separate transformations rather than edits to those measurements. The proposed [cleaning stage](cleaning.md) will write separate derived artifacts; it will not modify these tables or source revisions.
 
 ## Corrections and Retries
 
@@ -91,7 +91,7 @@ The [repository implementation](../src/oslo_energy/database/statnett_repository.
 
 `fetched_at` is when this project captured a snapshot. `recorded_at` is when it recorded a database entry. **Neither is a provider publication timestamp.**
 
-Repeated collection can capture changes from that point onward, but cannot reconstruct what Statnett published before the first capture. Historical backtesting must account for that limit: the latest current values may contain revisions unavailable at a past forecast date.
+Repeated collection can capture changes from that point onward, but cannot reconstruct what Statnett published before the first capture. Historical backtesting must account for that limit: the latest current values may contain revisions unavailable at a past forecast date. Neither the current-observation table nor its revision history is, by itself, a point-in-time training dataset.
 
 Daily catch-up and periodic reconciliation are available as CLI modes; see [incremental jobs](pipeline.md#incremental-jobs). No schedule is installed. Coverage queries distinguish absent hours from stored nulls and use UTC identity across DST. The daily high-water mark alone does not detect earlier gaps. Storage does not settle units, measurement accuracy, revision finality, or training eligibility.
 

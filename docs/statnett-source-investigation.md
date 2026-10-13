@@ -1,6 +1,6 @@
 # Statnett Source Investigation
 
-Evidence collected on **October 6, 2026**. Project status updated on **October 8, 2026**.
+API/export evidence collected on **October 6, 2026**. Revision evidence and project status updated on **October 13, 2026**.
 
 ## Summary
 
@@ -13,6 +13,7 @@ The main findings are:
 - Daily API values and summed hourly API values agree on the audited dates, including one partially missing day.
 - API and export values disagree, with a temporary roughly fourfold production difference and changing consumption differences.
 - CSV and Excel contain the same 2025 export values, so CSV parsing alone does not explain the mismatch.
+- Repeated API captures between October 6 and October 13 revealed changes to 22 completed hourly observations; see [observed API revisions](#observed-api-revisions).
 
 We are awaiting Statnett's answers about the differences, measurement meaning, and revisions. See [open questions](#open-questions) for what remains unresolved and [reproduction](#reproduction) for the saved evidence and research command.
 
@@ -61,6 +62,54 @@ This is evidence of a temporary scaling, unit, or resolution inconsistency. A qu
 - July-December: the median absolute hourly difference is **1.32232%**.
 
 Production and consumption differences partly track each other afterward, but their hourly difference correlation is only about 0.590 after July 9 and 0.638 in 2026. A shared production or net-exchange change does not explain every residual. The near-zero 2025 daily median below hides the second-half disagreement.
+
+## Observed API Revisions
+
+Repeated captures between **October 6 and October 13, 2026** returned different measurements for the same completed UTC hours. The database revision ledger contained **22 change records affecting 22 distinct hours** after the October 13 audit: 17 detected on October 8 and five additional changes detected on October 13. These are changes within the API product, separate from the API/export disagreement above.
+
+At that checkpoint, the database contained **38 ingestion runs**, with a highest run ID of 52. Run IDs are identifiers, not counts. Requests covered different ranges and overlaps; this was a selective audit, not an exhaustive re-fetch of all historical data. Neither the run count nor the current dataset size is an appropriate denominator for a revision rate.
+
+### October 13 Capture
+
+Daily catch-up stored 120 completed hours for October 8-12 in run 51, with no absent hours or null measurements. A separate request for October 1-12 stored 288 completed hours in run 52 and detected the following changes relative to run 50. All measurements and differences below are in **unverified provider units**, not confirmed MW or MWh.
+
+| Observation start (UTC) | Old production | New production | Old consumption | New consumption |
+| --- | ---: | ---: | ---: | ---: |
+| 2026-10-07 07:00 | 20,993 | 21,020 | 16,079 | 16,106 |
+| 2026-10-07 08:00 | 19,714 | 19,715 | 15,888 | 15,888 |
+| 2026-10-07 09:00 | 18,304 | 18,304 | 15,659 | 15,660 |
+| 2026-10-07 15:00 | 21,389 | 21,389 | 16,093 | 16,092 |
+| 2026-10-07 21:00 | 17,892 | 17,892 | 14,835 | 14,834 |
+
+The previous capture was fetched at `2026-10-08T03:46:11.100769Z`; the replacement capture was fetched at `2026-10-13T03:30:33.249630Z`. These timestamps bound our observations of the two versions, not the exact provider revision time. The largest change in this five-hour sample was +27 in both metrics at 07:00 UTC.
+
+Here, "silent revision" means a changed value detected by comparing captures, without a provider revision timestamp in the captured response. It does not establish that Statnett made no announcement elsewhere, which version is more accurate, or why the values changed. The findings demonstrate that completed observations are not necessarily immutable; they do not establish revision frequency, finality, or measurable forecasting impact.
+
+### Evidence and Point-in-Time Implications
+
+The [storage implementation](persistence.md#corrections-and-retries) records old/new measurements, previous/new run IDs, the new capture's fetch time, and database recording time. Run records identify raw archive paths and SHA-256 checksums. The raw snapshots themselves remain on disk, not in the database; losing those files would weaken reproduction. Neither fetch time nor database recording time is a provider publication timestamp.
+
+For publication, retain a dated export of the revision ledger and linked run metadata, both raw archives for each comparison, and checksum manifests. The following read-only query retrieves the October 13 examples and their provenance; local run IDs identify this collection and are not portable dataset identifiers:
+
+```sql
+SELECT revision.period_start_utc,
+       revision.old_production, revision.new_production,
+       revision.old_consumption, revision.new_consumption,
+       previous.id AS previous_run_id, previous.fetched_at AS previous_fetched_at,
+       previous.archive_path AS previous_archive, previous.archive_sha256 AS previous_sha256,
+       replacement.id AS new_run_id, replacement.fetched_at AS new_fetched_at,
+       replacement.archive_path AS new_archive, replacement.archive_sha256 AS new_sha256,
+       revision.recorded_at
+FROM statnett_observation_revisions AS revision
+JOIN statnett_ingestion_runs AS previous ON previous.id = revision.previous_run_id
+JOIN statnett_ingestion_runs AS replacement ON replacement.id = revision.new_run_id
+WHERE revision.new_run_id = 52
+ORDER BY revision.period_start_utc;
+```
+
+Rebuilding lag features from current database values can change historical inputs; revised targets can also change scores for fixed predictions. Using retrospectively revised inputs can distort an operational backtest, but the direction and magnitude are unmeasured here. A tested as-of selection mechanism must select only versions captured by each forecast issue time and leave unavailable inputs unavailable. Collection cannot reconstruct versions published before our first capture, and selective refreshes can miss intermediate or older changes.
+
+Future audits should report the overlapping hours actually compared, per-metric revision counts and magnitudes, and observation age at detection. Keep evaluation-reference snapshots fixed and compare capture-available versus retrospectively revised inputs under otherwise identical experiments. See the [research plan](research-plan.md#revision-aware-evaluation) for the proposed evaluation, not implemented results.
 
 ## Daily Consumption Comparison
 

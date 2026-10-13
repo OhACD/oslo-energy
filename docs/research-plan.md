@@ -87,6 +87,16 @@ Report forecast error with defined metrics, not an unexplained percentage called
 
 Report results by forecast horizon and season, alongside overall summaries and uncertainty estimates. Include failed approaches and cases where baselines win.
 
+### Revision-Aware Evaluation
+
+The [October 6-13 collection evidence](statnett-source-investigation.md#observed-api-revisions) records changes to 22 distinct completed hourly observations, including five detected on October 13. This makes revision risk an observed property of our captures, not merely a hypothetical concern. The audit was selective; no population revision rate or forecasting effect has been established.
+
+Before claiming point-in-time operational evaluation, implement and test selection of observation versions captured by each forecast issue time. Do not substitute current values for versions unavailable then. Scheduled collection and documented refresh coverage are needed; even after collection starts, unobserved intermediate versions and unknown provider publication times remain limitations.
+
+Compare capture-available inputs with retrospectively revised inputs using the same forecast timestamps, feature definitions, splits, models, and fixed evaluation-reference snapshot. Report changes in features, predictions, errors, and prediction coverage rather than assuming revisions necessarily worsen or improve performance. Assess evaluation-label revisions separately by rescoring fixed predictions against explicitly identified reference versions.
+
+Revision statistics should use the overlapping hours actually compared as their denominator and distinguish changes by metric, magnitude, and observation age at detection. Preserve dated ledger/run exports, linked raw archives, and checksums for the published audit. Run counts alone do not measure revision frequency, and historical availability before the first capture remains unrecoverable from this collection.
+
 ## Publication and Reproducibility
 
 ### Experiment Records
@@ -105,7 +115,7 @@ Each published experiment should identify:
 - Results for baselines, statistical models, and ML models on the same evaluation periods.
 - Scripts or instructions to reproduce the experiment, with software versions and computational requirements.
 
-We intend to publish findings and model performance, including negative results. Data and model-artifact distribution will need to respect Statnett's terms and any additional source licenses; the project's MIT license does not grant rights to third-party data.
+We intend to publish findings and model performance, including negative results. When the research is complete, we will publish the versioned dataset used in the reported experiments to support reproducibility, subject to the data providers' redistribution terms. The dataset release will include checksums, provenance, observed revision history and capture timestamps, and the documented transformations and exclusions needed to identify the exact research inputs and evaluation reference. Data and model-artifact distribution will need to respect Statnett's terms and any additional source licenses; the project's MIT license does not grant rights to third-party data.
 
 ## Contributing to the Research
 

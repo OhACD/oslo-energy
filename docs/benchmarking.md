@@ -1,6 +1,6 @@
 # Benchmarking And Initial Models
 
-The benchmark foundation implements unfitted weekly seasonal naive and previous-hour persistence, plus ordinary linear regression with training-only standardization. A shared evaluator compares predictions on fixed timestamps and observed reference labels. The [first validation experiment](../experiments/002_baselines_linear_validation_v1/README.md) has now run against the pinned real-data feature snapshot. MLP, final-test scoring, and notebook comparison remain future work.
+The benchmark foundation implements unfitted weekly seasonal naive and previous-hour persistence, plus ordinary linear regression with training-only standardization. A shared evaluator compares predictions on fixed timestamps and observed reference labels. The [first validation experiment](../experiments/002_baselines_linear_validation_v1/README.md) has run and been reproduced by its full notebook controller from pinned cleaned data. MLP and final-test scoring remain future work.
 
 ## Install And Test
 
@@ -115,4 +115,4 @@ To add a renderer, implement a new `BenchmarkPlot` module, add its class to [the
 
 Synthetic tests cover known OLS recovery, train-only scaler statistics, held-out perturbation invariance, delayed-label cutoff, model-state roundtrip, baseline missingness/no fallback, grid/schema rejection, future availability rejection, failure counts, metric recomputation, input/config mutation, and final-test opt-in. Existing feature/cleaning/audit checks remain unchanged.
 
-The first frozen validation comparison used 52,584 training examples and the same 8,784 scored 2024 hours for all methods. OLS MAE was 233.81 versus persistence 261.79 and seasonal naive 1,014.02 in provider units, a 10.69% paired MAE reduction against the stronger persistence reference. See the [experiment record](../experiments/002_baselines_linear_validation_v1/README.md) for exact scope, artifacts, verification, and limitations. Final-test scores are still uncomputed; MLP and notebook comparison remain next work.
+The first frozen validation comparison used 52,584 training examples and the same 8,784 scored 2024 hours for all methods. OLS MAE was 233.81 versus persistence 261.79 and seasonal naive 1,014.02 in provider units, a 10.69% paired MAE reduction against the stronger persistence reference. The clean-kernel notebook rerun rebuilt audit/features, refitted the same models, and exactly reproduced these metrics. See the [experiment record](../experiments/002_baselines_linear_validation_v1/README.md) for scope, artifacts, verification, and limitations. Final-test scores are still uncomputed; MLP remains next work.

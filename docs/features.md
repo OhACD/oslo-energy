@@ -29,18 +29,20 @@ Sparse lag features require their exact source hours, not a complete intervening
 
 ## Shared Configuration And Commands
 
-The draft [first feature-study configuration](../experiments/001_hour_ahead_v1/config.json) is shared by audit and feature commands. It specifies input manifest hashes, target/availability semantics, chronological train/validation/test windows, recipe identity, family versions/settings, and preservation rules. Input paths resolve relative to the config file, not the shell working directory. Windows use inclusive Oslo dates and assign examples by target start timestamp.
+Experiment 002's [feature configuration](../experiments/002_baselines_linear_validation_v1/feature_config.json) is shared by audit and feature commands and its notebook controller. It specifies input manifest hashes, target/availability semantics, chronological train/validation/test windows, recipe identity, family versions/settings, and preservation rules. Input paths resolve relative to the config file, not the shell working directory. Windows use inclusive Oslo dates and assign examples by target start timestamp. The earlier 001 source directory was consolidated into 002, without removing historical generated artifacts.
 
 From the repository root:
 
 ```bash
-python -m oslo_energy.pipeline.run_research_audit --config experiments/001_hour_ahead_v1/config.json
-python -m oslo_energy.pipeline.run_features --config experiments/001_hour_ahead_v1/config.json
+python -m oslo_energy.pipeline.run_research_audit --config experiments/002_baselines_linear_validation_v1/feature_config.json
+python -m oslo_energy.pipeline.run_features --config experiments/002_baselines_linear_validation_v1/feature_config.json
 ```
 
 The audit still accepts its original `--input-dir` and repeated `--window` form. Do not mix that form with `--config`. A feature run requires a matching audit whose windows and cleaning-manifest identity agree with the configuration. Editing dates without generating and referencing matching audit evidence fails. Audit references do not override `pending_review` eligibility. No arbitrary module imports or unregistered families are accepted. Unknown configuration keys, duplicate families/columns, unsupported horizons, invalid lag settings, and nonchronological/overlapping splits fail explicitly.
 
 The default feature output root is `data/features/statnett`; `--output-dir` overrides it. New runs never overwrite previous executions or source/configuration directories. Exit `0` means a completed feature execution with source warnings, not training approval. Processing failures return `1`, argument errors use argparse's `2`.
+
+The notebook controller regenerates the audit first and writes a resolved feature config under its new execution, explicitly binding that audit. It generates features under the same execution and writes a separate resolved benchmark config that pins their manifest. This avoids editing source settings or relying on mutable latest-run lookup. Source configs remain authoritative for the recipe/model choices; resolved configs record stage identities. Feature outputs inside a source experiment are allowed only under its designated `runs/` subtree.
 
 ## Artifacts And Safe Model Inputs
 

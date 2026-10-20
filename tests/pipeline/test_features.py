@@ -145,6 +145,16 @@ def test_outputs_cannot_overwrite_inputs_or_configuration(configured):
             run_features(configured, output_dir=output)
 
 
+def test_feature_stage_may_write_only_inside_designated_experiment_runs(configured):
+    before = artifact_checksum(configured)
+    result = run_features(configured, output_dir=configured.parent / "runs" / "feature_stage")
+    validate_feature_run(result.output_dir)
+    assert result.output_dir.parent == configured.parent / "runs" / "feature_stage"
+    assert artifact_checksum(configured) == before
+    with pytest.raises(ValueError, match="runs/"):
+        run_features(configured, output_dir=configured.parent / "not_artifacts")
+
+
 def test_manifest_column_list_cannot_turn_a_label_into_a_feature(tmp_path, configured):
     result = run_features(configured, output_dir=tmp_path / "features")
     report_path = result.output_dir / "feature_report.json"

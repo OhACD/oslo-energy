@@ -99,9 +99,14 @@ def run_features(config_path: Path, *, output_dir: Path = Path("data/features/st
     """Generate stateless, sequential one-hour forecast features from frozen inputs."""
     config = load_research_config(config_path, require_audit=True)
     output_dir = output_dir.resolve()
-    for input_root in (config.cleaned_dir, config.audit_dir, config.path.parent):
+    for input_root in (config.cleaned_dir, config.audit_dir):
         if output_dir == input_root or input_root in output_dir.parents:
             raise ValueError("Feature outputs must be outside input/configuration directories")
+    experiment_runs = config.path.parent / "runs"
+    if output_dir == config.path.parent or (
+        config.path.parent in output_dir.parents and output_dir != experiment_runs and experiment_runs not in output_dir.parents
+    ):
+        raise ValueError("Feature outputs inside an experiment must use runs/; otherwise stay outside configuration directories")
     cleaning_manifest, audit_report = _verify_inputs(config)
     cleaning_report = Archive(config.cleaned_dir / "cleaning_report.json").read()
     observations = load_cleaned_observations(config.cleaned_dir, cleaning_report)

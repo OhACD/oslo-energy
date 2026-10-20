@@ -22,6 +22,7 @@ modeling = [
     "matplotlib>=3.7,<4",
     "scipy>=1.14,<1.15; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
+notebooks = ["nbformat>=5.9,<6", "nbclient>=0.10,<0.11", "ipykernel>=6.29,<7"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

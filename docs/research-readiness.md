@@ -20,7 +20,7 @@ Replace the cleaning run placeholder with an actual completed run. These are can
 
 No API call, database connection, or model dependency is needed. Exit `0` means the descriptive audit completed, including findings; `1` means processing failed, and malformed arguments use argparse's code `2`. Exit status never means research approval.
 
-The audit also accepts `--config experiments/001_hour_ahead_v1/config.json` instead of `--input-dir` and `--window`. This [shared configuration](features.md#shared-configuration-and-commands) pins the cleaned manifest and uses the same windows as feature generation. Do not mix the two input forms. A newly generated audit does not silently replace any pinned audit reference in that file.
+The audit also accepts `--config experiments/002_baselines_linear_validation_v1/feature_config.json` instead of `--input-dir` and `--window`. This [shared configuration](features.md#shared-configuration-and-commands) pins the cleaned manifest and uses the same windows as feature generation. Do not mix the two input forms. A newly generated audit does not silently replace any pinned audit reference in that file. The notebook controller explicitly writes a run-local resolved feature config linked to its fresh audit, preserving the source file.
 
 ## Report Contents
 

@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "experiment_id": "001_hour_ahead_v1",
+  "experiment_id": "002_baselines_linear_validation_v1",
   "status": "draft",
   "purpose": "provisional_feature_generation",
   "inputs": {

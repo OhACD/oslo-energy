@@ -11,7 +11,7 @@ The project currently provides the data pipeline for that research. It collects 
 - Compare machine-learning models with statistical models and simple forecasting baselines under the same evaluation conditions.
 - Publish reproducible experiments, findings, and model performance, including results where simpler methods perform better.
 
-**One-hour-ahead consumption forecasting is the first task.** Seasonal-naive/persistence baselines and ordinary linear regression are implemented with shared benchmarking and modular plots. The [first validation experiment](experiments/002_baselines_linear_validation_v1/README.md) compared all methods on 8,784 hours in 2024: linear regression reduced MAE by 10.69% versus persistence. This is a provisional retrospective API-reference result, not operational accuracy. The MLP, final-test scoring, and notebook comparison remain planned.
+**One-hour-ahead consumption forecasting is the first task.** Seasonal-naive/persistence baselines and ordinary linear regression are implemented with shared benchmarking and modular plots. The [notebook-led validation experiment](experiments/002_baselines_linear_validation_v1/README.md) compared all methods on 8,784 hours in 2024: linear regression reduced MAE by 10.69% versus persistence. Its full notebook rerun reproduced the original metrics exactly. This is a provisional retrospective API-reference result, not operational accuracy. MLP and final-test scoring remain planned.
 
 ## Current Status
 
@@ -32,9 +32,9 @@ Normalized and cleaned data retain missing values and remain marked `training_re
 
 The standalone [research-readiness audit](docs/research-readiness.md) verifies a cleaned snapshot against explicit research windows and reports coverage, missing stretches, descriptive statistics, and source limitations without changing measurements or approving training.
 
-The draft [shared research configuration](experiments/001_hour_ahead_v1/config.json) pins the cleaned/audit snapshots, windows, and feature recipe. Feature runs keep labels separate from model inputs and preserve every intended timestamp with availability flags.
+Experiment 002 owns its [feature configuration](experiments/002_baselines_linear_validation_v1/feature_config.json), [benchmark configuration](experiments/002_baselines_linear_validation_v1/benchmark.json), and [notebook controller](experiments/002_baselines_linear_validation_v1/experiment.ipynb). Feature runs keep labels separate from model inputs and preserve every intended timestamp with availability flags. The former 001 feature-study directory has been consolidated into 002.
 
-**Next:** review the initial validation comparison, then add the MLP and notebook workflow as a separately versioned experiment. Provisional experiments use a fixed API reference with explicit source/revision limitations; they will not claim point-in-time operational accuracy. Source clarification remains necessary for stronger conclusions. Benchmark execution defaults to validation; final-test scoring requires explicit opt-in. Each experiment keeps generated predictions, metrics, model states, and plots together under its own `runs/` directory.
+**Next:** add the MLP as a separately versioned notebook experiment. Provisional experiments use a fixed API reference with explicit source/revision limitations; they will not claim point-in-time operational accuracy. Source clarification remains necessary for stronger conclusions. The notebook controller runs validation only; standalone benchmark final-test scoring requires explicit opt-in. Each experiment keeps generated predictions, metrics, model states, plots, and executed notebooks together under its own `runs/` directory.
 
 ## Quickstart
 
@@ -43,10 +43,10 @@ Use **Python 3.10 or newer**. From the repository root:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[dev,modeling]'
+python -m pip install -e '.[dev,modeling,notebooks]'
 ```
 
-This installs the complete test/benchmark interface, including scikit-learn and plotting. For data collection alone, `.[dev]` is sufficient. Neither PostgreSQL nor archived research data is needed to run the automated tests.
+This installs the complete test, notebook, and benchmark interfaces, including scikit-learn and plotting. For data collection alone, `.[dev]` is sufficient. Neither PostgreSQL nor archived research data is needed to run the automated tests.
 
 Fetch, archive and normalize hourly data:
 
@@ -87,20 +87,31 @@ Daily mode catches up and refreshes three completed Oslo dates. Reconciliation r
 
 ## Tests Versus Experiments
 
-The current interface is the command line and Python package APIs; experiment notebooks are planned, not implemented. Software tests and forecasting experiments serve different purposes:
+The experiment notebook is the interactive controller, JSON files are authoritative settings, package APIs contain the tested implementation, and CLI entry points support automation. Software tests and forecasting experiments serve different purposes:
 
 | Interface | Command | What it does |
 | --- | --- | --- |
 | Full offline test suite | `python -m pytest -q` | Checks correctness with synthetic fixtures; no real-data experiment or live API/database access |
 | Feature and leakage checks | `python -m pytest -q tests/transformation/test_feature_families.py tests/pipeline/test_features.py` | Tests causal lags, DST, missing inputs, and label/feature separation |
 | Model and benchmark checks | `python -m pytest -q tests/models tests/benchmarking` | Fits synthetic models and checks train-only scaling, metrics, checkpoints, and plots |
+| Notebook smoke check | `python -m pytest -q tests/pipeline/test_experiment_notebook.py` | Executes the actual controller in a fresh kernel against tiny synthetic settings, not real-data results |
+| Full notebook experiment | `python -m oslo_energy.pipeline.run_experiment --experiment-dir experiments/002_baselines_linear_validation_v1` | Rebuilds audit/features from pinned cleaned data, trains/scores validation, displays plots, and saves the executed notebook |
 | Real-data comparison | `python -m oslo_energy.pipeline.run_benchmark --config path/to/benchmark.json` | Fits on configured training data and scores the selected evaluation split |
 
 PostgreSQL integration tests are separately opt-in. For additional syntax checks, run `python -m compileall -q src/oslo_energy`. Passing software tests is not evidence of predictive accuracy or source correctness.
 
 ### Reproduce The Existing Validation Experiment
 
-If the exact feature run referenced by [the frozen benchmark config](experiments/002_baselines_linear_validation_v1/benchmark.json) exists locally:
+Open [experiment.ipynb](experiments/002_baselines_linear_validation_v1/experiment.ipynb), choose the project environment, restart the kernel and Run All. To execute the same notebook headlessly in a fresh project-interpreter kernel:
+
+```bash
+python -m oslo_energy.pipeline.run_experiment \
+    --experiment-dir experiments/002_baselines_linear_validation_v1
+```
+
+This starts from the pinned cleaned snapshot, writes a new audit and feature run, and evaluates validation. Source configs are snapshotted and unchanged; explicit resolved copies inside the execution link each newly generated stage. Results live under `runs/experiment_<id>/`, including the executed notebook and benchmark's plots. There is no ingestion or test scoring in this command.
+
+For benchmark-only reproduction, if the exact historical feature run referenced by [the frozen benchmark config](experiments/002_baselines_linear_validation_v1/benchmark.json) exists locally:
 
 ```bash
 python -m oslo_energy.pipeline.run_benchmark \
@@ -109,7 +120,7 @@ python -m oslo_energy.pipeline.run_benchmark \
 
 This trains/scales on 2018-2023 and evaluates 2024. It does not score the 2025 test. Every invocation creates a new execution; it does not overwrite or reuse a fitted model implicitly.
 
-**A fresh checkout does not contain the referenced datasets or generated runs.** The published configurations pin exact local manifest checksums. A newly fetched or regenerated run is a different input, even when its dates or values appear similar; do not bypass a checksum mismatch or rewrite the frozen experiment to point at it. See the [experiment record](experiments/002_baselines_linear_validation_v1/README.md) for the original results and requirements, or create a new version using the workflow below.
+**A fresh checkout does not contain the referenced datasets or generated runs.** The notebook needs the pinned cleaned artifacts; the benchmark-only command needs the historical feature run. A newly fetched cleaned dataset is a different input, even when dates or values appear similar; do not bypass checksum mismatches or rewrite the frozen experiment to point at it. The controller's explicit generated-feature rebinding is recorded in each execution, not substituted into source configs. See the [experiment record](experiments/002_baselines_linear_validation_v1/README.md) for requirements, or create a new version using the workflow below.
 
 ## End-To-End Workflow
 
@@ -144,7 +155,7 @@ Run from the repository root with the environment activated. This is a sequence 
 
    Review missing stretches, source limitations, and descriptive findings. This audits the candidate test window; it does not train or score models on it. Do not tune filters or features using held-out outcomes. If that inspection drives substantive design changes, choose a fresh final test and disclose why. These dates are examples supplied as settings, not hardcoded split boundaries.
 
-4. **Define a new versioned feature study.** Use the [shared configuration](experiments/001_hour_ahead_v1/config.json) and [feature guide](docs/features.md#shared-configuration-and-commands) as the schema reference. Set the new cleaned and audit paths and their manifest SHA-256 checksums, matching windows, task/availability assumptions, family versions, and preservation rules. Relative input paths resolve from the configuration's directory.
+4. **Define a new versioned experiment.** Use 002's [feature configuration](experiments/002_baselines_linear_validation_v1/feature_config.json), notebook, and [feature guide](docs/features.md#shared-configuration-and-commands) as the schema reference. Set cleaned and audit references, matching windows, task/availability assumptions, family versions, and preservation rules. Relative input paths resolve from the configuration's directory. Keep feature and model settings inside the same experiment directory.
 
    To inspect an artifact's checksum with the project's hashing API:
 
@@ -226,12 +237,12 @@ Implementation lives under [src/oslo_energy](src/oslo_energy/), with tests under
 ## Development and Contributions
 
 ```bash
-python -m pip install -e '.[dev,modeling]'
+python -m pip install -e '.[dev,modeling,notebooks]'
 python -m pytest
 python -m compileall -q src/oslo_energy
 ```
 
-The full test suite needs the optional modeling extra and runs without API access or PostgreSQL. Learned-model tests fit synthetic data only; they do not run the real-data experiment. Core data-pipeline commands do not require modeling dependencies. Database integration tests are opt-in; see the [PostgreSQL guide](docs/persistence.md).
+The full test suite needs the modeling and notebooks extras and runs without live API access or PostgreSQL. Learned-model and clean-kernel notebook tests use synthetic data only; they do not run the real-data experiment. Core data-pipeline commands do not require these extras. Database integration tests are opt-in; see the [PostgreSQL guide](docs/persistence.md).
 
 Contributions are welcome, especially source-validation evidence, reproducible data-quality analyses, tests, and documentation improvements. For features or models, discuss the forecasting task and evaluation design in an issue before building a new experiment. See the [research plan](docs/research-plan.md) for the current direction.
 

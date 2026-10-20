@@ -1,0 +1,1 @@
+"""Shared fixed-reference forecast evaluation, independent of model internals."""

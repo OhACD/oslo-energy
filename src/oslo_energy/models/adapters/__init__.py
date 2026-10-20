@@ -1,0 +1,1 @@
+"""Concrete forecast adapters with explicit registry membership."""

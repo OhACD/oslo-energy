@@ -1,6 +1,6 @@
 # Data Pipeline
 
-Use this guide to collect Statnett data, inspect normalized outputs, or replay a saved snapshot. The pipeline prepares observations for analysis; it does not yet clean data for training, engineer features, or run forecasting models. Analytical cleaning is a proposed standalone stage after normalization; it is not invoked by ingestion. See the [cleaning pipeline design](cleaning.md).
+Use this guide to collect Statnett data, inspect normalized outputs, or replay a saved snapshot. The pipeline prepares observations for analysis; it does not engineer features or run forecasting models. Analytical cleaning is a standalone stage after normalization; it is not invoked by ingestion and does not certify training eligibility. See the [cleaning pipeline](cleaning.md).
 
 For the project goals, start with the [README](../README.md). For measurement uncertainties, see the [Statnett investigation](statnett-source-investigation.md).
 
@@ -106,6 +106,20 @@ Replace the path and timestamp with those of your archive. Generated archive fil
 
 Replay does not rewrite the raw file. Each replay creates a new normalized output directory. Both hourly snapshots and the retained [legacy daily examples](../data/examples/statnett/) are supported; only hourly data can be persisted.
 
+## Standalone Cleaning
+
+Run the initial `preserve_and_flag` policy on one normalized hourly run:
+
+```bash
+python -m oslo_energy.pipeline.run_cleaning \
+  --input-dir data/normalized/statnett/<normalization_run_id> \
+  --output-dir data/cleaned/statnett
+```
+
+This offline command retains observations and measurements, records nulls/absent hours and source limitations, and creates a unique cleaned run with original-value columns and checksummed lineage. It neither fetches data nor uses PostgreSQL. Only historical candidates enter the analytical output; optional incomplete rows are diagnostic context. Legacy daily runs are rejected.
+
+Read `cleaning_report.json` for checks, counts, and warnings. A completed output requires `manifest.json`; `validate_cleaning_run` verifies its declared output checksums. Failed executions remove their new directory. Cleaning returns `0` for completed outputs including warnings and `1` for processing failure; this differs from ingestion job coverage exit codes. No cleaning run sets `training_ready` to true. See [cleaning](cleaning.md) for the policy contract, output schema, and extension tests.
+
 ## Command Options
 
 Run `python -m oslo_energy.pipeline.run_ingestion --help` for the CLI reference.
@@ -152,7 +166,7 @@ Argument errors and failed runs return nonzero exit codes. A complete local day 
 ```text
 Hourly API -> raw JSON archive -> normalization -> CSVs + quality report
                                                 |                      |
-                                      explicit --persist       proposed cleaning CLI
+                                      explicit --persist       standalone cleaning CLI
                                                 |                      |
                               PostgreSQL observations + history   separate cleaned dataset
 ```
@@ -165,6 +179,8 @@ Hourly API -> raw JSON archive -> normalization -> CSVs + quality report
 | [StatnettNormalizer](../src/oslo_energy/transformation/statnett_normalizer.py) | Validate values and map source positions to observation periods |
 | [normalize_archive](../src/oslo_energy/pipeline/normalization.py) | Write the normalized files and quality report |
 | [run_ingestion](../src/oslo_energy/pipeline/run_ingestion.py) | Handle command options and coordinate the workflow |
+| [Cleaning runner](../src/oslo_energy/pipeline/cleaning.py) | Validate normalized inputs, run diagnostics/policies, and publish checked derived artifacts |
+| [run_cleaning](../src/oslo_energy/pipeline/run_cleaning.py) | Invoke registered cleaning policies separately from ingestion |
 | [StatnettRepository](../src/oslo_energy/database/statnett_repository.py) | Store completed hourly observations and audit changes |
 
 The separate [comparison tool](../src/oslo_energy/pipeline/compare_consumption.py) collects research inputs and generates the investigation chart. It is not a cleaning or training stage.

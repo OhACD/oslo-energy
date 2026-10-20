@@ -1,0 +1,17 @@
+{
+  "schema_version": "1",
+  "benchmark_id": "002_baselines_linear_validation_v1",
+  "feature_run": {
+    "path": "../../data/features/statnett/features_bfd5447fee294265977400413c36832d",
+    "manifest_sha256": "dd528319566d5700c016e5ca5d9a7e698eba8a1a6b2a869050fb8da0eb267106"
+  },
+  "models": [
+    {"id": "seasonal_naive", "version": "1", "configuration": {}},
+    {"id": "persistence", "version": "1", "configuration": {}},
+    {"id": "linear_regression", "version": "1", "configuration": {"fit_intercept": true}}
+  ],
+  "baselines": ["seasonal_naive", "persistence"],
+  "provisional_research": true,
+  "evaluation_split": "validation",
+  "plots": ["comparison"]
+}

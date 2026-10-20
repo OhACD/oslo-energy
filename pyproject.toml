@@ -17,6 +17,11 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest"]
 research = ["matplotlib"]
+modeling = [
+    "scikit-learn>=1.5,<1.8",
+    "matplotlib>=3.7,<4",
+    "scipy>=1.14,<1.15; sys_platform == 'darwin' and platform_machine == 'arm64'",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

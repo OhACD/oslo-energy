@@ -1,0 +1,1 @@
+"""Concrete, stateless feature families registered by an explicit allowlist."""

@@ -2,7 +2,7 @@
 
 Oslo Energy aims to study **Norwegian electricity consumption forecasting** through reproducible comparisons of features, training-data quality, and forecasting methods. This document describes planned work, not implemented models or published results.
 
-The current dataset covers national production and consumption. It does not support claims about Oslo-specific demand. Consumption is the first forecasting target; prediction horizons, model families, and additional data sources remain to be selected.
+The current dataset covers national production and consumption. It does not support claims about Oslo-specific demand. One-hour-ahead consumption is the initial task, comparing simple baselines, ordinary linear regression, and a small feed-forward neural network. Additional horizons and data sources remain future decisions.
 
 ## Research Questions
 
@@ -14,9 +14,13 @@ The goal is to explain these differences, not assume that more features, cleaner
 
 ## Where We Are Now
 
-The [data pipeline](pipeline.md) collects and archives hourly observations, preserves missing values, and supports replay and optional database storage. A separate [cleaning stage](cleaning.md) is proposed but not implemented. Feature engineering, model training, and benchmark evaluation are also not implemented.
+The [data pipeline](pipeline.md) collects and archives hourly observations, preserves missing values, and supports replay and optional database storage. A separate [cleaning stage](cleaning.md) implements diagnostics, an extensible policy contract, and `preserve_and_flag`. Basic [lag/calendar features](features.md), shared research configuration, and the [baseline/linear benchmark foundation](benchmarking.md) are implemented. The [first real-data validation experiment](../experiments/002_baselines_linear_validation_v1/README.md) has completed, with modular charts saved alongside each execution. MLP, final-test scoring, and experiment notebooks remain future work.
+
+A standalone [research-readiness audit](research-readiness.md) now verifies completed cleaning artifacts and profiles explicit candidate research windows. It reports endpoint/internal coverage, nulls and unavailable stretches, descriptive statistics, and source-context overlaps. It never changes observations or automatically approves research eligibility. Review its material findings and record a task-specific decision before real-data feature selection or model training.
 
 We are awaiting Statnett's answers about measurement units, API/export disagreement, and revisions. The [source investigation](statnett-source-investigation.md) records the evidence. Until those questions and the training-data policy are addressed, normalized observations remain marked `training_ready: false`.
+
+Provisional retrospective experiments may proceed against an explicitly frozen API snapshot while these questions remain unresolved. Results describe agreement with that reference, not independent ground truth or a point-in-time operational backtest. Immediate availability after an hour ends must be disclosed as an assumption, not a confirmed publication guarantee. Cleaning and experiment execution do not promote upstream data to `training_ready: true`.
 
 ## Planned Work
 
@@ -24,14 +28,15 @@ We are awaiting Statnett's answers about measurement units, API/export disagreem
 | --- | --- |
 | Resolve source questions | Document measurement meaning, known limitations, and a defensible data-selection policy |
 | Define the forecasting task | Specify target, time resolution, forecast issue time, horizons, and evaluation periods |
+| Review research readiness | Audit a frozen cleaned snapshot over explicit windows; document missingness handling, material findings, and provisional research limitations |
 | Engineer features | Build reproducible transformations that use only information available when a forecast is made |
 | Establish comparisons | Implement simple baselines, suitable statistical methods, and a focused set of ML models |
 | Run experiments | Measure feature and training-quality effects under consistent evaluation conditions |
 | Publish findings | Release methods, reproducible configurations, performance results, and limitations |
 
-**Feature engineering is the next development focus**, after addressing the source questions and defining the analytical data-selection policy. Candidate features include past consumption, rolling summaries of past observations, calendar information, and seasonal patterns. Weather or production features require additional availability checks: future observed weather and same-hour production cannot simply be treated as known at forecast time. Cleaning-policy comparisons should be evaluated separately from feature-set comparisons, with the evaluation reference held fixed.
+**Review the readiness audit before selecting real-data features.** Feature engineering then builds on the audited preservation policy and an explicit task-specific selection rule. Initial families are consumption lags of 1, 24, and 168 elapsed UTC hours and cyclic local hour/day-of-week encodings. Rolling summaries, holidays, weather, and production remain later families. Weather or production features require additional availability checks: future observed weather and same-hour production cannot simply be treated as known at forecast time. Cleaning-policy comparisons should be evaluated separately from feature-set comparisons, with the evaluation reference held fixed.
 
-These are candidate directions, not a commitment to a particular model architecture or forecast horizon.
+The initial neural network will be a small feed-forward MLP, not an LSTM. Architecture, split boundaries, and tuning budgets must be frozen before final test evaluation; no model is presumed to outperform a baseline.
 
 ## Experiment Design
 
@@ -48,6 +53,8 @@ Compare feature sets using the same dataset version, training windows, forecasti
 Record how each feature is calculated, how much history it needs, and when its inputs become available. Measure changes in both predictions and error, including whether improvements are consistent across horizons and seasons.
 
 Feature recipes should specify null handling and minimum valid coverage for statistical windows. Preserve UTC hour identity when constructing lags: excluded or absent rows must not compress elapsed time. Local dates remain useful for calendar features and grouping. Calendar encodings, Norwegian holiday indicators, and statistical feature families require their own design; they are not cleaning rules.
+
+The implemented `FeatureFamily` contract declares stable identity/version, validated settings, required inputs, output schema, lookback, forecast availability, and a timestamp-aligned result with validity/lineage. A registry and versioned recipe select families without changing orchestration. This is a separate contract from `CleaningPolicy`. Measurement access is restricted through a causal-history accessor; target/future perturbation tests guard the initial families. Actual publication times and revisions remain separate unresolved limitations. Learned preprocessing belongs in a future fold-scoped fit/transform contract, not in globally fitted families or cleaning outputs.
 
 ### Training-Data Quality
 
@@ -71,13 +78,17 @@ Compare a small, purposeful set of methods before expanding the benchmark:
 - **Statistical models:** time-series methods suited to the selected resolution and seasonal structure.
 - **Machine-learning models:** methods selected for the task and available data, rather than complexity alone.
 
-Use the same forecast horizons, test dates, information availability, and stated retraining policy. Document tuning budgets and computational cost so the comparison is interpretable. No model family has been selected yet.
+The first complete benchmark will compare a 168-elapsed-hour seasonal-naive forecast (plus previous-hour persistence as a sanity reference), scikit-learn ordinary linear regression, and a small PyTorch MLP. Baseline and linear adapters plus shared scoring are implemented; MLP remains future work. The learned models will share the same lag/calendar recipe and eligibility rules. Model adapters standardize guarded fit, indexed prediction, and fitted-state serialization without sharing estimator internals. The linear adapter fits its scaler and ordinary least-squares estimator on training examples only. Ridge and more complex architectures are separate future experiments.
+
+The benchmark runner uses a separate pinned feature-run configuration, defaults to validation scoring, and requires explicit final-test opt-in. It compares each method's coverage and errors as well as paired common-timestamp errors and baseline-relative skill. Missing labels are never filled and model failures remain visible. Its first real-data execution trained on 2018-2023 and evaluated 2024 without tuning or test scoring. Follow-up model/feature choices require separately versioned experiments; these validation results are not the final held-out result.
+
+Use the same forecast horizons, test dates, information availability, and stated retraining policy. Document tuning budgets and computational cost so the comparison is interpretable.
 
 ## Evaluation Principles
 
 Use chronological train/validation/test splits and evaluate forecasts at successive points in time, each using only the history available then. Reserve a final test period that is not used to select features, models, or hyperparameters.
 
-Fit preprocessing, imputation, scaling, and feature selection only on the training portion of each evaluation split. Check that rolling features do not include their prediction target or future observations. The proposed [cleaning design](cleaning.md) treats cleaned observations as inputs to feature engineering, not as a feature matrix or proof of training eligibility.
+Fit preprocessing, imputation, scaling, and feature selection only on the training portion of each evaluation split. Check that rolling features do not include their prediction target or future observations. The [cleaning contract](cleaning.md) treats cleaned observations as inputs to feature engineering, not as a feature matrix or proof of training eligibility.
 
 Do not silently fill missing target labels and treat them as observations. Define one shared rule for excluding unavailable reference labels from scoring, independent of the strategy. Keep the intended forecast timestamps fixed; a smaller training set does not redefine the test task. Report attempted forecasts, scored forecasts, unavailable predictions, failures, and coverage alongside error metrics. Where appropriate, report paired errors on common eligible timestamps, while retaining coverage results so abstention or selection bias remains visible.
 
@@ -101,7 +112,9 @@ Revision statistics should use the overlapping hours actually compared as their 
 
 ### Experiment Records
 
-A future `experiments/` directory should hold reproducible scripts and configurations that reference versioned data artifacts, rather than duplicate raw or normalized datasets. Generated result locations and concrete schemas remain to be designed; no experiment runner is currently implemented.
+The `experiments/` directory now contains a draft feature-study configuration and reproduction notes that reference data artifacts rather than duplicate datasets. Versioned notebook entry points and frozen model experiments remain future work. Each frozen experiment must identify input checksums, feature/model versions, temporal splits, seeds, tuning budget, and exact imported package code revision or source snapshot. Changed hypotheses or settings create a new experiment version. A frozen notebook alone does not freeze its dependencies or imported code. No model experiment runner or notebooks are implemented yet.
+
+Notebooks will call reusable package APIs and run top-to-bottom in a clean kernel. Generated executions will use separate non-overwritten result directories containing predictions, metrics/coverage, fitted states, effective settings, lineage, and an executed notebook. Full experiments are explicitly run from their experiment directory; fast correctness tests remain under `tests/`. A small synthetic clean-kernel notebook smoke check will be automated separately and identified as test execution, not a scientific result. Notebook execution must not collect live data or silently select a mutable latest snapshot.
 
 Track the lineage from normalized input checksums to the cleaning run, feature recipe/run, experiment configuration/execution, and each fold's fitted preprocessing and model state. Record ordered treatment versions/configuration, feature families and definitions, target/horizons, split boundaries, model parameters, tuning budget, seeds, code/software versions, and evaluation-reference identity. Preserve timestamped predictions and metrics so comparisons can be recomputed.
 

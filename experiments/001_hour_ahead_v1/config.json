@@ -1,0 +1,43 @@
+{
+  "schema_version": "1",
+  "experiment_id": "001_hour_ahead_v1",
+  "status": "draft",
+  "purpose": "provisional_feature_generation",
+  "inputs": {
+    "cleaned": {
+      "path": "../../data/cleaned/statnett/preserve_and_flag_98650bbc3f6e448ebd2b8de2dba4bbe1",
+      "manifest_sha256": "b8b1ee2a5a13f565ca4d4301888508d32f4fb29b494b9da3b8f227401cb21f10"
+    },
+    "audit": {
+      "path": "../../data/audits/statnett/research_audit_b693a30c9ff54bb8b067007f2a7ebf91",
+      "manifest_sha256": "1c92a4104f17db262af921531e134aa426ae259f4f92de4c15edd1c8c4d5428a"
+    }
+  },
+  "task": {
+    "target": "consumption",
+    "horizon_hours": 1,
+    "timezone": "Europe/Oslo",
+    "issue_time": "target_start",
+    "publication_delay_hours": 0,
+    "availability_assumption": "completed_hour_plus_configured_delay_retrospective"
+  },
+  "windows": [
+    {"name": "train", "from_date": "2018-01-01", "to_date": "2023-12-31"},
+    {"name": "validation", "from_date": "2024-01-01", "to_date": "2024-12-31"},
+    {"name": "test", "from_date": "2025-01-01", "to_date": "2025-12-31"}
+  ],
+  "features": {
+    "recipe_id": "lag_calendar",
+    "recipe_version": "1",
+    "families": [
+      {"id": "consumption_lags", "version": "1", "configuration": {"lags": [1, 24, 168]}},
+      {"id": "calendar", "version": "1", "configuration": {}}
+    ]
+  },
+  "treatment": {
+    "suspicious_values": "retain",
+    "missing_inputs": "preserve",
+    "missing_targets": "preserve",
+    "drop_rows": false
+  }
+}

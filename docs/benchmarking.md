@@ -81,6 +81,8 @@ Use a separate version-1 JSON benchmark configuration. Do not add model fields t
 
 Replace placeholders with exact artifact references before using this template. Paths resolve relative to the benchmark config. Split boundaries and feature definitions come from that pinned feature run; the benchmark does not independently redefine them. Unknown keys/models/versions/settings and learned models mislabeled as baselines fail. `provisional_research: true` explicitly permits only retrospective research with the inherited limitations; it does not resolve outstanding source questions.
 
+For a notebook-led experiment, the [blueprint generator](../README.md#create-a-new-experiment) instead writes `"feature_run": {"source": "experiment_features"}`. This is an explicit controller-only reference to the freshly generated stage, not a dummy checksum or automatic latest-run selection. The controller resolves it to a real path/hash inside the execution before invoking the benchmark. The standalone benchmark loader rejects this symbolic form; its input must remain fully pinned. Original pinned configurations remain supported unchanged.
+
 The command below starts an actual fit and scoring run. It is not part of normal synthetic tests:
 
 ```bash

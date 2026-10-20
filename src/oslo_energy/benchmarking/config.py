@@ -17,10 +17,10 @@ class BenchmarkConfig:
     sha256: str
     fingerprint: str
     effective: dict
-    feature_dir: Path
+    feature_dir: Path | None
 
 
-def load_benchmark_config(path: Path) -> BenchmarkConfig:
+def load_benchmark_config(path: Path, *, allow_generated_features: bool = False) -> BenchmarkConfig:
     path = path.resolve()
     content = path.read_bytes()
     raw = json.loads(content, object_pairs_hook=_unique_object, parse_constant=_invalid_constant)
@@ -29,12 +29,17 @@ def load_benchmark_config(path: Path) -> BenchmarkConfig:
         raise ValueError("Require version 1 and explicit provisional retrospective research permission")
     if not isinstance(raw["benchmark_id"], str) or not re.fullmatch(r"[a-z0-9_]+", raw["benchmark_id"]):
         raise ValueError("Invalid benchmark identity")
-    _keys(raw["feature_run"], {"path", "manifest_sha256"})
     reference = raw["feature_run"]
-    if not isinstance(reference["path"], str) or not reference["path"].strip():
-        raise ValueError("Require an explicit feature-run path")
-    if not isinstance(reference["manifest_sha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", reference["manifest_sha256"]):
-        raise ValueError("Require a pinned feature manifest SHA-256")
+    generated = reference == {"source": "experiment_features"}
+    if generated:
+        if not allow_generated_features:
+            raise ValueError("Generated features require the notebook experiment controller; standalone benchmarks need a pinned feature run")
+    else:
+        _keys(reference, {"path", "manifest_sha256"})
+        if not isinstance(reference["path"], str) or not reference["path"].strip():
+            raise ValueError("Require an explicit feature-run path")
+        if not isinstance(reference["manifest_sha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", reference["manifest_sha256"]):
+            raise ValueError("Require a pinned feature manifest SHA-256")
     if raw.get("evaluation_split", "validation") not in ("validation", "test"):
         raise ValueError("Benchmark split must be validation or test")
     if not isinstance(raw["models"], list) or not raw["models"]:
@@ -61,4 +66,5 @@ def load_benchmark_config(path: Path) -> BenchmarkConfig:
         get_plot(plot_id)
     effective = {**raw, "models": specs, "evaluation_split": raw.get("evaluation_split", "validation"), "plots": plots}
     fingerprint = hashlib.sha256(json.dumps(effective, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
-    return BenchmarkConfig(path, hashlib.sha256(content).hexdigest(), fingerprint, effective, (path.parent / reference["path"]).resolve())
+    return BenchmarkConfig(path, hashlib.sha256(content).hexdigest(), fingerprint, effective,
+                           None if generated else (path.parent / reference["path"]).resolve())

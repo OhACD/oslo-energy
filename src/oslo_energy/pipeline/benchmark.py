@@ -90,6 +90,8 @@ def run_benchmark(
     config_path: Path, *, output_dir: Path | None = None, allow_test_evaluation: bool = False,
 ) -> BenchmarkRun:
     config = load_benchmark_config(config_path)
+    if config.feature_dir is None:
+        raise ValueError("Standalone benchmarking requires a pinned feature run")
     experiment_runs = config.path.parent / "runs"
     output_dir = (output_dir or experiment_runs).resolve()
     if output_dir == config.feature_dir or config.feature_dir in output_dir.parents:

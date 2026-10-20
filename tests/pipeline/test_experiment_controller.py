@@ -50,6 +50,34 @@ def test_controller_runs_all_stages_without_editing_source_configs(experiment_di
         execution.audit()
 
 
+def test_controller_binds_generated_features_without_fake_source_hashes(experiment_dir):
+    from oslo_energy.benchmarking.config import load_benchmark_config
+    from oslo_energy.pipeline.research_config import load_research_config
+
+    feature_path, benchmark_path = experiment_dir / "feature_config.json", experiment_dir / "benchmark.json"
+    feature = Archive(feature_path).read()
+    feature["inputs"].pop("audit")
+    feature_path.unlink()
+    Archive(feature_path).write(feature)
+    benchmark = Archive(benchmark_path).read()
+    benchmark["feature_run"] = {"source": "experiment_features"}
+    benchmark_path.unlink()
+    Archive(benchmark_path).write(benchmark)
+    with pytest.raises(ValueError, match="notebook experiment controller"):
+        load_benchmark_config(benchmark_path)
+    with pytest.raises(ValueError, match="audit reference"):
+        load_research_config(feature_path, require_audit=True)
+    execution = ExperimentExecution.begin(experiment_dir)
+    assert execution.benchmark_config.feature_dir is None
+    execution.audit()
+    execution.features()
+    execution.benchmark()
+    execution.complete()
+    assert Archive(benchmark_path).read()["feature_run"] == {"source": "experiment_features"}
+    resolved = load_benchmark_config(execution.resolved_configs["benchmark"])
+    assert resolved.feature_dir == execution.feature_run.output_dir
+
+
 def test_controller_rejects_test_scope_and_source_mutation(experiment_dir):
     execution = ExperimentExecution.begin(experiment_dir)
     with (experiment_dir / "feature_config.json").open("a") as source:

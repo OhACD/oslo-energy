@@ -44,6 +44,8 @@ The default feature output root is `data/features/statnett`; `--output-dir` over
 
 The notebook controller regenerates the audit first and writes a resolved feature config under its new execution, explicitly binding that audit. It generates features under the same execution and writes a separate resolved benchmark config that pins their manifest. This avoids editing source settings or relying on mutable latest-run lookup. Source configs remain authoritative for the recipe/model choices; resolved configs record stage identities. Feature outputs inside a source experiment are allowed only under its designated `runs/` subtree.
 
+New [generated blueprints](../README.md#create-a-new-experiment) can omit an initial audit reference because the controller produces it. Only the controller's initial source loading permits that omission; standalone `run_features` still requires an identified compatible audit. The generator fills known family/model defaults and leaves unknown input hashes/dates as visible placeholders that must be completed before execution.
+
 ## Artifacts And Safe Model Inputs
 
 | Artifact | Purpose |

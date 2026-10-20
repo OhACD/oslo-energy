@@ -95,10 +95,55 @@ The experiment notebook is the interactive controller, JSON files are authoritat
 | Feature and leakage checks | `python -m pytest -q tests/transformation/test_feature_families.py tests/pipeline/test_features.py` | Tests causal lags, DST, missing inputs, and label/feature separation |
 | Model and benchmark checks | `python -m pytest -q tests/models tests/benchmarking` | Fits synthetic models and checks train-only scaling, metrics, checkpoints, and plots |
 | Notebook smoke check | `python -m pytest -q tests/pipeline/test_experiment_notebook.py` | Executes the actual controller in a fresh kernel against tiny synthetic settings, not real-data results |
+| New experiment blueprint | `python -m oslo_energy.pipeline.create_experiment 003_my_study_v1` | Generates editable configs, notebook, and README; does not run research |
 | Full notebook experiment | `python -m oslo_energy.pipeline.run_experiment --experiment-dir experiments/002_baselines_linear_validation_v1` | Rebuilds audit/features from pinned cleaned data, trains/scores validation, displays plots, and saves the executed notebook |
 | Real-data comparison | `python -m oslo_energy.pipeline.run_benchmark --config path/to/benchmark.json` | Fits on configured training data and scores the selected evaluation split |
 
 PostgreSQL integration tests are separately opt-in. For additional syntax checks, run `python -m compileall -q src/oslo_energy`. Passing software tests is not evidence of predictive accuracy or source correctness.
+
+### Create A New Experiment
+
+Use the generator instead of manually creating files or duplicating a historical experiment. With the Quickstart dependencies installed, run from the repository root:
+
+```bash
+python -m oslo_energy.pipeline.create_experiment 003_my_study_v1
+```
+
+This creates a new `experiments/003_my_study_v1/` containing:
+
+| File | What to review or fill |
+| --- | --- |
+| `feature_config.json` | Cleaned-run path/checksum, train/validation/test dates, lag/calendar recipe, and availability assumptions |
+| `benchmark.json` | Registered model settings, baseline IDs, plots, and validation scope |
+| `experiment.ipynb` | Ready-to-use controller calling package APIs; no copied training implementation |
+| `README.md` | Completion checklist, reproduction command, and space for the research hypothesis/results |
+
+The default blueprint deliberately uses visible `FILL_ME_` placeholders for the cleaned input and dates. The CLI lists their locations; fill every one before Run All. They are not fake hashes or silently selected dates. No output run is created when the generated notebook detects unfinished settings. Review the existing supported baseline/linear methods; MLP is not available yet. The generator refuses existing experiment names, invalid paths/settings, and incompatible baseline/lag selections. It has no force-overwrite option.
+
+If you already have a cleaned run and chosen dates, populate and pin those settings automatically:
+
+```bash
+python -m oslo_energy.pipeline.create_experiment 003_my_study_v1 \
+    --cleaned-run 'data/cleaned/statnett/<cleaning_run_id>' \
+    --window train:2018-01-01:2023-12-31 \
+    --window validation:2024-01-01:2024-12-31 \
+    --window test:2025-01-01:2025-12-31
+```
+
+Run **one** creation form for a given name, not both. The second form verifies the supplied cleaned artifacts, computes the exact manifest checksum, and writes a config-relative input path. All three chronological windows are required when supplying `--window`; otherwise dates stay explicitly unfilled. These dates are examples, not hardcoded choices or an endorsement for a new final test.
+
+Optional flags include `--lags 1 24 168`, `--models seasonal_naive persistence linear_regression`, `--plots comparison`, `--publication-delay-hours 0`, and `--experiments-dir experiments`. An empty `--plots` selection disables plots. Use `python -m oslo_energy.pipeline.create_experiment --help` for the reference. New families/models/plots still require implemented registered classes, not arbitrary names.
+
+After reviewing/filling the JSON files, open the generated notebook with the project interpreter, restart the kernel, and Run All. Or execute it in a fresh kernel:
+
+```bash
+python -m oslo_energy.pipeline.run_experiment \
+    --experiment-dir experiments/003_my_study_v1
+```
+
+The notebook generates a fresh audit and features, binds them explicitly in run-local configs, fits/scales on training only, scores validation, renders plots, and verifies saved outputs. No initial audit or feature hash needs to be invented: generated source configs omit the audit and declare `feature_run: {"source": "experiment_features"}` for the controller. Standalone feature and benchmark commands still require their real pinned stage inputs; use resolved configs or prepare those references explicitly for standalone invocation.
+
+Creating a blueprint never fetches data, fits a model, changes an old experiment, or scores the final test. Running it is a separate explicit action. Generated drafts retain missing values and suspicious measurements; they declare provisional retrospective research, not source certification. Review that scope and the publication-delay assumption before execution. Record the hypothesis and freeze settings before final evaluation; changed designs get a new experiment version.
 
 ### Reproduce The Existing Validation Experiment
 
@@ -155,38 +200,17 @@ Run from the repository root with the environment activated. This is a sequence 
 
    Review missing stretches, source limitations, and descriptive findings. This audits the candidate test window; it does not train or score models on it. Do not tune filters or features using held-out outcomes. If that inspection drives substantive design changes, choose a fresh final test and disclose why. These dates are examples supplied as settings, not hardcoded split boundaries.
 
-4. **Define a new versioned experiment.** Use 002's [feature configuration](experiments/002_baselines_linear_validation_v1/feature_config.json), notebook, and [feature guide](docs/features.md#shared-configuration-and-commands) as the schema reference. Set cleaned and audit references, matching windows, task/availability assumptions, family versions, and preservation rules. Relative input paths resolve from the configuration's directory. Keep feature and model settings inside the same experiment directory.
+4. **Generate a versioned experiment.** Use [Create A New Experiment](#create-a-new-experiment) with the new cleaned run and chosen windows. The generator supplies all main files and computes the cleaned manifest hash; it does not duplicate 002's historical dataset references. The [feature guide](docs/features.md#shared-configuration-and-commands) and [benchmark schema](docs/benchmarking.md#benchmark-configuration-and-cli) describe editable settings.
 
-   To inspect an artifact's checksum with the project's hashing API:
+5. **Review the generated source settings.** Complete every `FILL_ME_` field, confirm time windows/recipe/model settings, and record the research rationale in the generated README. Set an explicit publication-delay assumption and retain the source limitations. The notebook will create a new audit and explicitly pin its fresh stage outputs; there is no mutable latest-run lookup. Setting `training_ready` to true is not a shortcut.
 
-   ```bash
-   python -c 'import sys; from pathlib import Path; from oslo_energy.pipeline.cleaning import artifact_checksum; print(artifact_checksum(Path(sys.argv[1])))' \
-       'data/cleaned/statnett/<cleaning_run_id>/manifest.json'
-   ```
-
-   Repeat for the audit manifest. Choose a new experiment directory rather than modifying historical configs. No initializer currently fills these references automatically. Setting `training_ready` to true is not a configuration shortcut; provisional feature generation carries the unresolved restrictions forward.
-
-5. **Build causal features from that configuration.** The linked audit must match both the cleaned manifest and the configured windows:
-
-   ```bash
-   python -m oslo_energy.pipeline.run_features \
-       --config 'experiments/<new_feature_study>/config.json'
-   ```
-
-   Inspect the printed coverage and saved report. Targets and eligibility flags are separate from the model-input matrix. Changed windows require matching new audit evidence; audit also accepts this same configuration through `--config` after its references have been established.
-
-6. **Define and run a new benchmark version.** Follow the [benchmark configuration schema](docs/benchmarking.md#benchmark-configuration-and-cli). Pin the newly generated feature manifest and select `seasonal_naive`, `persistence`, and `linear_regression`, explicit baseline IDs, `evaluation_split: validation`, and `plots: [comparison]`. `provisional_research: true` records the permitted retrospective scope, not source certification.
-
-   ```bash
-   python -m oslo_energy.pipeline.run_benchmark \
-       --config 'experiments/<new_benchmark_study>/benchmark.json'
-   ```
-
-   The linear model and scaler fit training examples only. Baselines do not fit. No missing labels are filled, no final-test scores are produced, and source publication/revision limitations remain explicit. Final-test scoring requires a separately frozen design, `evaluation_split: test`, and deliberate `--allow-test-evaluation`; do not use it as a routine smoke check.
+6. **Run the notebook controller.** Open the generated notebook and Run All, or run `python -m oslo_energy.pipeline.run_experiment --experiment-dir experiments/003_my_study_v1` with your chosen ID. This regenerates audit/features from the cleaned snapshot, fits the model/scaler on training only, scores validation, and saves plots and checksummed outputs. No labels are filled and no final-test scores are produced. Standalone benchmark final-test evaluation still requires a separately frozen design and deliberate opt-in; it is not a smoke check.
 
 ### Find And Verify Results
 
-By default, a benchmark keeps generated outputs beside its configuration:
+The notebook controller keeps all stages beneath `experiments/<experiment>/runs/experiment_<execution_id>/`: source/resolved configs, audit, features, and a nested benchmark directory containing models and plots. The clean-kernel wrapper adds an executed notebook and completion record. Verify the whole execution with `validate_notebook_execution` from [the notebook runner](src/oslo_energy/pipeline/run_experiment.py).
+
+The standalone benchmark command instead keeps its own outputs directly beside its configuration:
 
 ```text
 experiments/<experiment>/
@@ -202,7 +226,7 @@ experiments/<experiment>/
 
 The CLI prints the run path. The comparison plot shows common-timestamp MAE/RMSE, coverage, and paired baseline-relative skill, not a generic percentage accuracy. Model failures remain visible. `--output-dir` selects another output root; previous executions are never overwritten. Generated runs are ignored by Git and must be retained separately when preserving a research result.
 
-Verify integrity and recompute metrics from saved predictions:
+Verify benchmark integrity and recompute metrics from saved predictions. For a notebook execution, use its nested benchmark stage path printed in the experiment report instead of the standalone path below:
 
 ```bash
 python - <<'PY'

@@ -46,8 +46,8 @@ class ExperimentExecution:
     @classmethod
     def begin(cls, experiment_dir: Path) -> "ExperimentExecution":
         experiment_dir = experiment_dir.resolve()
-        feature = load_research_config(experiment_dir / "feature_config.json", require_audit=True)
-        benchmark = load_benchmark_config(experiment_dir / "benchmark.json")
+        feature = load_research_config(experiment_dir / "feature_config.json")
+        benchmark = load_benchmark_config(experiment_dir / "benchmark.json", allow_generated_features=True)
         if benchmark.effective["evaluation_split"] != "validation":
             raise ValueError("The notebook controller supports validation only; final-test scoring stays explicit")
         sources = [feature.path, benchmark.path]
